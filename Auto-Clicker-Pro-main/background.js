@@ -186,8 +186,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
                     action: 'smartClick',
                     x: pos.x,
                     y: pos.y,
-                    scrollX: pos.scrollX || 0,
-                    scrollY: pos.scrollY || 0,
                     delay: 1000,
                     selector: pos.selector,
                     tagName: pos.tagName || '',
@@ -199,8 +197,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
                     action: 'clickAt',
                     x: pos.x,
                     y: pos.y,
-                    scrollX: pos.scrollX || 0,
-                    scrollY: pos.scrollY || 0,
                     delay: 1000
                 });
             }

@@ -143,10 +143,8 @@ const recordClickHandler = (e) => {
 
     const step = smartModeCached ? {
         action: 'smartClick',
-        x: e.pageX,
-        y: e.pageY,
-        scrollX: window.scrollX,
-        scrollY: window.scrollY,
+        x: e.clientX,
+        y: e.clientY,
         delay: 1000,
         selector: getCSSSelector(e.target),
         tagName: e.target.tagName || '',
@@ -157,10 +155,8 @@ const recordClickHandler = (e) => {
         }
     } : {
         action: 'clickAt',
-        x: e.pageX,
-        y: e.pageY,
-        scrollX: window.scrollX,
-        scrollY: window.scrollY,
+        x: e.clientX,
+        y: e.clientY,
         delay: 1000
     };
 
@@ -342,8 +338,7 @@ const branchClickHandler = (e) => {
     
     const step = {
         action: 'smartClick',
-        x: e.pageX, y: e.pageY,
-        scrollX: window.scrollX, scrollY: window.scrollY,
+        x: e.clientX, y: e.clientY,
         delay: 1000,
         selector: getCSSSelector(e.target),
         tagName: e.target.tagName || '',
@@ -393,6 +388,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         executeSteps(msg.steps, msg.loop);
     } else if (msg.action === 'stop') {
         stopExecution = true;
+    } else if (msg.action === 'startRecordingSession') {
+        startRecordingLocally();
+    } else if (msg.action === 'stopRecordingSession') {
+        stopRecordingLocally();
     }
 });
 
@@ -400,7 +399,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 let stopExecution = false;
 const executeSteps = async (steps, loop) => {
     stopExecution = false;
-    const loopCount = loop.enabled ? (loop.infinite ? Infinity : loop.count) : 1;
+    const loopConfig = loop || { enabled: false, infinite: false, count: 1 };
+    const loopCount = loopConfig.enabled ? (loopConfig.infinite ? Infinity : loopConfig.count) : 1;
     let currentLoop = 0;
     while (currentLoop < loopCount && !stopExecution) {
         currentLoop++;
@@ -416,14 +416,29 @@ const executeSteps = async (steps, loop) => {
 };
 
 const executeStep = async (step) => {
-    if (step.scrollX !== undefined) window.scrollTo(step.scrollX, step.scrollY);
-    const el = step.action === 'smartClick' ? findElementSmart(step) : document.elementFromPoint(step.x - window.scrollX, step.y - window.scrollY);
-    if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await new Promise(r => setTimeout(r, 200));
-        const rect = el.getBoundingClientRect();
-        const evt = new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: rect.left + rect.width/2, clientY: rect.top + rect.height/2 });
-        el.dispatchEvent(evt);
+    const vx = step.clientX !== undefined ? step.clientX : (step.x - (step.scrollX || 0));
+    const vy = step.clientY !== undefined ? step.clientY : (step.y - (step.scrollY || 0));
+
+    if (step.action === 'smartClick') {
+        const el = findElementSmart(step);
+        if (el) {
+            const rect = el.getBoundingClientRect();
+            const evt = new MouseEvent('click', {
+                bubbles: true, cancelable: true, view: window,
+                clientX: rect.left + rect.width / 2,
+                clientY: rect.top + rect.height / 2
+            });
+            el.dispatchEvent(evt);
+        }
+    } else {
+        const el = document.elementFromPoint(vx, vy);
+        if (el) {
+            const evt = new MouseEvent('click', {
+                bubbles: true, cancelable: true, view: window,
+                clientX: vx, clientY: vy
+            });
+            el.dispatchEvent(evt);
+        }
     }
 };
 
